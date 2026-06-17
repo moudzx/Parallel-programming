@@ -1,28 +1,29 @@
 CC     = mpicc
 CFLAGS = -O2 -fopenmp -Wall -Wextra
+LDFLAGS = -fopenmp -lpthread
 NP     = 8
 
-DIR  := $(word 1,$(MAKECMDGOALS))
-FILE := $(word 2,$(MAKECMDGOALS))
+.PHONY: clean
 
-.PHONY: clean run $(DIR) $(FILE)
+.DEFAULT_GOAL := help
 
-.DEFAULT_GOAL := _noargs
+help:
+	@echo "Usage: make <directory_to_search> <pattern>"
+	@echo "Example: make /home/user/docs .txt"
 
-_noargs:
-	@echo "Usage: make <directory_to_search> <file_to_search>"
-
-$(DIR): search
-	@mpiexec -n $(NP) --oversubscribe ./search "$(DIR)" "$(FILE)"
-
-$(FILE):
-	@:
+%: search
+	@if [ "$@" = "clean" ] || [ "$@" = "help" ]; then \
+		exit 0; \
+	fi; \
+	if [ -z "$(word 2,$(MAKECMDGOALS))" ]; then \
+		echo "Error: Pattern not specified"; \
+		echo "Usage: make <directory> <pattern>"; \
+		exit 1; \
+	fi; \
+	mpiexec -n $(NP) ./search "$@" "$(word 2,$(MAKECMDGOALS))"
 
 search: main.c
-	$(CC) $(CFLAGS) main.c -o search -lpthread
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 clean:
 	rm -f search
-
-%:
-	@:
